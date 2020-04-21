@@ -1,0 +1,138 @@
+# Network Forensics
+# ELK - Logstash filter for the Bro output data 
+# Fields (conn.log,x509.log,dns.log,http.log,files.log,dhcp.log)
+
+input {
+   file {
+		    type => "BRO_connlog"
+        path => "/home/elk/Desktop/ELK/bro-logs/con.log"
+		    sincedb_path => "/dev/null"
+		    start_position => "beginning"
+		}
+	file {	
+			 type => "Bro_509X"
+		 	 path => "/home/elk/Desktop/ELK/bro-logs/x509.log"
+			 sincedb_path => "/dev/null"
+			 start_position => "beginning"
+		}
+	file {	
+			 type => "Bro_DNS"
+			 path => "/home/elk/Desktop/ELK/bro-logs/dns.log"
+			 sincedb_path => "/dev/null"
+			 start_position => "beginning"
+		}
+	file {	
+			 type => "BRO_httplog"
+			 path => "/home/elk/Desktop/ELK/bro-logs/http.log"
+			 sincedb_path => "/dev/null"
+			 start_position => "beginning"
+		}
+	file {	
+			 type => "BRO_fileslog"
+			 path => "/home/elk/Desktop/ELK/bro-logs/files.log"
+			 sincedb_path => "/dev/null"
+			 start_position => "beginning"
+		}
+	file {	
+			 type => "BRO_dhcplog"
+			 path => "/home/elk/Desktop/ELK/bro-logs/dhcp.log"
+			 sincedb_path => "/dev/null"
+			 start_position => "beginning"
+		}
+}
+
+filter {
+ if [type] == "BRO_connlog" {
+     grok {
+		 match => ["message","(?<timestamp>(.*?))\t(?<uid>(.*?))\t(?<cid.orig_h>(.*?))\t(?<id.orig_p>(.*?))\t(?<id.resp_h>(.*?))\t(?<id.resp_p>(.*?))\t(?<proto>(.*?))\t(?<service>(.*?))\t(?<duration>(.*?))\t(?<orig_bytes>(.*))\t(?<resp_bytes>(.*))\t(?<conn_state>(.*))\t(?<local_orig>(.*))\t(?<local_resp>(.*))\t(?<missed_bytes>(.*))\t(?<history>(.*))\t(?<orig_pkts>(.*))\t(?<orig_ip_bytes>(.*))\t(?<resp_pkts>(.*))\t(?<resp_ip_bytes>(.*))\t(?<tunnel_parents>(.*))"]
+ 
+ }
+geoip {
+      source => "id.resp_h"
+    }
+    
+ date {
+      match => [ "timestamp", "UNIX" ]
+      target => "timestamp"
+	}
+  }
+
+  if [type] == "Bro_509X" {
+      grok {
+      match => [ "message", "(?<timestamp>(.*?))\t(?<id>(.*?))\t(?<certificate_version>(.*?))\t(?<certificate_serial>(.*?))\t(?<certificate_subject>(.*?))\t(?<certificate_issuer>(.*?))\t(?<certificate_not_valid_before>(.*?))\t(?<certificate_not_valid_after>(.*?))\t(?<certificate_key_algorithm>(.*?))\t(?<certificate_signing_algorithm>(.*))\t(?<certificate_key_type>(.*))\t(?<certificate_key_length>(.*))\t(?<certificate_exponent>(.*))\t(?<certificate_curve>(.*))\t(?<san_dns>(.*))\t(?<san_uri>(.*))\t(?<san_email>(.*))\t(?<san_ip>(.*))\t(?<basic_constraints_ca>(.*))\t(?<basic_constraints_path_length>(.*))" ]
+    }
+   
+     date {
+          match => [ "timestamp", "UNIX" ]
+          target => "timestamp"
+ 	 }
+  }
+ 
+
+ if [type] == "Bro_DNS" {
+     grok {
+     match => ["message","(?<timestamp>(.*?))\t(?<uid>(.*?))\t(?<id.orig_h>(.*?))\t(?<id.orig_p>(.*?))\t(?<id.resp_h>(.*?))\t(?<id.resp_p>(.*?))\t(?<proto>(.*?))\t(?<trans_id>(.*?))\t(?<rtt>(.*?))\t(?<query>(.*))\t(?<qclass>(.*))\t(?<qclass_name>(.*))\t(?<qtype>(.*))\t(?<qtype_name>(.*))\t(?<rcode>(.*))\t(?<rcode_name>(.*))\t(?<AA>(.*))\t(?<TC>(.*))\t(?<RD>(.*))\t(?<RA>(.*))\t(?<Z>(.*))\t(?<answers>)(.*)\t(?<TTLs>(.*))\t(?<rejected>(.*))"]
+}
+
+geoip {
+       source => "id.resp_h"
+    }
+
+date {
+      match => [ "timestamp", "UNIX" ]
+      target => "timestamp"
+
+  }
+}
+
+if [type] == "BRO_httplog" {
+    grok {
+    match => [ "message", "(?<timestamp>(.*?))\t(?<uid>(.*?))\t(?<id.orig_h>(.*?))\t(?<id.orig_p>(.*?))\t(?<id.resp_h>(.*?))\t(?<id.resp_p>(.*?))\t(?<trans_depth>(.*?))\t(?<method>(.*?))\t(?<bro_host>(.*?))\t(?<uri>(.*?))\t(?<referrer>(.*?))\t(?<user_agent>(.*?))\t(?<request_body_len>(.*?))\t(?<response_body_len>(.*?))\t(?<status_code>(.*?))\t(?<status_msg>(.*?))\t(?<info_code>(.*?))\t(?<info_msg>(.*?))\t(?<filename>(.*?))\t(?<http_tags>(.*?))\t(?<username>(.*?))\t(?<password>(.*?))\t(?<proxied>(.*?))\t(?<orig_fuids>(.*?))\t(?<orig_mime_types>(.*?))\t(?<resp_fuids>(.*?))\t(?<resp_mime_types>(.*))" ]
+        }
+geoip {
+       source => "id.resp_h"
+    }
+     
+date {
+      match => [ "timestamp", "UNIX" ]
+      target => "timestamp"
+
+  }
+
+ }
+ 
+ if [type] == "BRO_fileslog" {
+     grok {
+     match => [ "message", "(?<timestamp>(.*?))\t(?<fuid>(.*?))\t(?<tx_hosts>(.*?))\t(?<rx_hosts>(.*?))\t(?<conn_uids>(.*?))\t(?<source>(.*?))\t(?<depth>(.*?))\t(?<analyzers>(.*?))\t(?<mime_type>(.*?))\t(?<filename>(.*?))\t(?<duration>(.*?))\t(?<local_orig>(.*?))\t(?<is_orig>(.*?))\t(?<seen_bytes>(.*?))\t(?<total_bytes>(.*?))\t(?<missing_bytes>(.*?))\t(?<overflow_bytes>(.*?))\t(?<timedout>(.*?))\t(?<parent_fuid>(.*?))\t(?<md5>(.*?))\t(?<sha1>(.*?))\t(?<sha256>(.*?))\t(?<extracted>(.*))" ]
+        }
+     
+ date {
+      match => [ "timestamp", "UNIX" ]
+      target => "timestamp"
+
+  }
+   }
+  
+ if [type] == "BRO_dhcplog" {
+     grok { 
+     match => [ "message", "(?<timestamp>(.*?))\t(?<uid>(.*?))\t(?<id.orig_h>(.*?))\t(?<id.orig_p>(.*?))\t(?<id.resp_h>(.*?))\t(?<id.resp_p>(.*?))\t(?<mac>(.*?))\t(?<assigned_ip>(.*?))\t(?<lease_time>(.*?))\t(?<trans_id>(.*))" ]
+        }
+		
+		date {
+          match => [ "timestamp", "UNIX" ]
+          target => "timestamp"
+
+  }
+		
+      }
+   
+  
+}
+
+
+	output  {
+       elasticsearch { 
+       hosts => "localhost:9200"
+	     index => "bro-output"
+	}
+}
